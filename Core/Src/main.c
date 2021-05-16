@@ -53,17 +53,18 @@ TIM_HandleTypeDef htim4;
 /* USER CODE BEGIN PV */
 // НАСТРОЙК�? ОСНОВНІ //----------------------------
 int color_tekst = YELLOW;//КОЛІР ТЕКСТУ
-int setTemp = 100; //ЗАДАНА ТЕМПЕРАТУРА ПАЯЛЬН�?КА
+int setTemp = 320; //ЗАДАНА ТЕМПЕРАТУРА ПАЯЛЬН�?КА+ поправка
 int maxTemp = 450;//МАКС�?МАЛЬНА ТЕМПЕРАТУРА ПАЯЛЬН�?КА
 int minTemp = 100;//МІНІМАЛЬНА ТЕМПЕРАТУРА ПАЯЛЬН�?КА
 int popravcaP=20;//4правка температури
 int crocEncode = 5;//КРОК ЗМІН�? ТЕМПЕРАТУР�? ЗА 1 КРОК ЕНКОДЕРА
-int setFen = 20;//ЗАДАНА ТЕМПЕРАТУРА ФЕНА
+int setFen = 150;//ЗАДАНА ТЕМПЕРАТУРА ФЕНА
 int maxFen = 400;//МАКС�?МАЛЬНА ТЕМПЕРАТУРА ФЕНА
 int minFen = 50;//МІНІМАЛЬНА ТЕМПЕРАТУРА ФЕНА
 int popravcaF=0;
 int setAir = 50;
 int minAir = 30;//мінімальга швидкість вентилятора
+int EncRot = 1;//напрямок енкодера право = 1 , ліво = 0.
 //ПЕРЕМІННІ//--------------------------------------
 int EncVal;
 void setPWM(uint16_t pwm_value);
@@ -150,15 +151,17 @@ void encoder(void) {
     }
     setFen= currCounter + popravcaF;
     char buff[16];
-   	 snprintf(buff, sizeof(buff), "%d", currCounter);
+   	 snprintf(buff, sizeof(buff), "%d*C", currCounter);
    	 ST7789_WriteString(90, 115, buff ,Font_16x26, color_tekst, BLACK);
+   	  if(setFen<99)ST7789_DrawFilledRectangle(90+16*4, 115,16,26,BLACK);//BLACK
     }
-    if(menun==2){//Фена поток
+    if(menun==2 && fanflag==1){//Фена поток
         currCounter=(currCounter + minAir)/crocEncode;
         currCounter=currCounter*crocEncode;
         if(currCounter>100){
            set0=1;
            }
+       // if(currCounter<30)
         setAir = currCounter;
        setPWM(setAir);
         char buff[16];
@@ -335,8 +338,10 @@ void menu(void){
 	}
 	if(stopset==0){//поток повітря фена
         char buff[16];
-       	 snprintf(buff, sizeof(buff), "%d ", setAir);
+       	 snprintf(buff, sizeof(buff), "%d", setAir);
+       	 ST7789_DrawFilledRectangle(90+16, 175,48-16,26,BLACK);//BLACK
        	 ST7789_WriteString(90, 175, buff ,Font_16x26, color_tekst, BLACK);
+
 	}
 }
 
@@ -381,6 +386,7 @@ int main(void)
   mytftset();
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
   HAL_TIM_PWM_Start_IT(&htim4, TIM_CHANNEL_1);
+  setPWM(0);
  // HAL_GPIO_WritePin(CUL_GPIO_Port, CUL_Pin,GPIO_PIN_SET);//pb5
  // HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);//TIM_CHANNEL_1
   /* USER CODE END 2 */
@@ -614,7 +620,8 @@ static void MX_TIM2_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
   /* USER CODE BEGIN TIM2_Init 1 */
-  htim2.Init.Period = maxTemp-minTemp;
+//  htim2.Init.Period = maxTemp-minTemp;
+
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
@@ -623,11 +630,16 @@ static void MX_TIM2_Init(void)
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
+  if(EncRot==1){
   sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
+  }
+  if(EncRot==0){
+  sConfig.IC1Polarity = TIM_ICPOLARITY_FALLING;
+  }
   sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
   sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
   sConfig.IC1Filter = 15;
-  sConfig.IC2Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC2Polarity = TIM_ICPOLARITY_FALLING;
   sConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
   sConfig.IC2Prescaler = TIM_ICPSC_DIV1;
   sConfig.IC2Filter = 15;
